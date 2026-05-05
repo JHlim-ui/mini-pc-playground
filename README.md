@@ -1,75 +1,78 @@
 # mini-pc-playground
 
-GMKtec K8 Plus (Ryzen 7 8845HS / 32GB / 500GB) 기반 AI 에이전트 서버
+GMKtec K8 Plus 미니PC AI 에이전트 서버
 
-## 시스템 컨셉
-
-여러 AI 에이전트가 자율적으로 동작하며 일상을 보조하는 시스템.
-Docker로 감싸서 AWS 또는 다른 Mini PC로 언제든 이전 가능.
+## 시스템 구조
 
 ```
 [Desktop / Phone]
        ↓ SSH (터미널)
    [Mini PC]
-       ↓
-  [Docker Compose]
-  ├── Agent: 일정관리 (Google Calendar + Notion)
-  ├── Agent: 가계부
-  ├── MCP Server (OneDrive / Notion / GitHub)
-  └── Telegram Bot (알림 & 소통 인터페이스)
-       ↓
-  [Claude API]
+   ├── tmux → claude (개발/대화용)
+   └── Docker Compose
+       ├── weather-agent (Claude Haiku + KakaoTalk)
+       ├── (예정) schedule-agent
+       ├── (예정) budget-agent
+       ├── MCP Server (OneDrive/Notion/GitHub)
+       └── KakaoTalk (나에게 보내기 + 의 수신)
+            ↓
+       [Claude API]
 ```
 
 ## 핵심 원칙
 
-- **Docker 필수** — 컨테이너로 감싸서 어디든 이전 가능
-- **터미널 퍼스트** — 데스크톱이든 스마트폰이든 SSH로 Mini PC에 직접 접속
-- **Claude API** — 에이전트 자동화용 (Haiku: 단순작업 / Sonnet: 복잡한 분석)
-- **Claude Code** — 개발/디버깅/대화형 작업용으로 병행
-- **Telegram** — 에이전트와 사용자 소통 채널
+- **Docker 필수**: 컨테이너로 어디든 이전 가능
+- **터미널 퍼스트**: SSH → miniPC → tmux → claude
+- **Claude API**: 에이전트 자동화 (Haiku: 단순작업, Sonnet: 복잡한 분석)
+- **KakaoTalk**: 에이전트 채널 (나에게 보내기 + 카카오 톡 채널 명령)
 
-## 저장소 역할
+## 날씨 에이전트 (agents/weather)
 
-| 저장소 | 용도 |
-|---|---|
-| **Notion** | 에이전트 output, 정리, 요약 |
-| **OneDrive** | 대용량 파일 |
-| **GitHub** | 코드 & 프로젝트 |
+### 기능
+- 매일 07:00 강남구 날씨 → Claude Haiku 요약 → 카카오톡 나에게 발송
+- 카카오 톡 채널에서 `날씨` 명령 수신 → 즉시 조회 발송
+- 카카오 톡 채널에서 자유 질문 → Claude Haiku 답변
 
-## 구조
+### 시작 순서
 
-```
-mini-pc-playground/
-├── docker/                  # Docker Compose 환경 (로컬 → AWS 이식 가능)
-├── agents/
-│   ├── schedule/            # 일정관리 에이전트
-│   └── budget/              # 가계부 에이전트
-└── MCP-Microsoft-Office/    # OneDrive/Calendar/Mail MCP 서버
+**1. 환경 변수 설정**
+```bash
+cp .env.example .env
+# .env 파일에 키 입력
 ```
 
-## 환경
+**2. 카카오 최초 인증** (1회만)
+```bash
+# miniPC에서
+# developers.kakao.com > 앱 등록 > Redirect URI: http://localhost:5000/kakao/callback
+pip install requests python-dotenv
+python scripts/kakao_auth.py
+# 브라우저에서 URL 열고 로그인 → code 값 입력
+# data/kakao_token.json 생성 확인
+```
 
-- **로컬**: GMKtec K8 Plus, Windows 11 Pro, WSL2 + Docker Desktop
-- **클라우드**: AWS EC2 (동일한 docker-compose.yml 사용)
-- **접속**: Tailscale (100.113.229.59) 또는 SSH (192.168.200.103)
+**3. 카카오 챗봇 채널 Webhook** (miniPC 외부 노칠 필요)
+```bash
+# Cloudflare Tunnel 또는 ngrok·ddns 등으로
+# https://your-public-url/kakao/webhook 
+# 카카오디벨로퍼스 > 체널 뮨신저 > Webhook URL 에 등록
+```
 
-## 설치된 도구
+**4. Docker 실행**
+```bash
+docker compose up -d
+docker compose logs -f weather-agent
+```
 
-| 도구 | 버전 | 상태 |
-|---|---|---|
-| Git | 2.54.0 | ✅ |
-| GitHub CLI | 2.92.0 | ✅ |
-| Docker Desktop | 4.71.0 | ✅ |
-| Tailscale | 1.92.5 | ✅ |
-| Node.js | 24.15.0 | ✅ |
-| Claude Code | 2.1.126 | ✅ |
-| Azure CLI | 2.85.0 | ✅ |
+## SSH 접속
 
-## 남은 작업
+```bash
+ssh -i ~/.ssh/id_ed25519 dlawo@192.168.200.103
+# Tailscale: ssh dlawo@100.113.229.59
+```
 
-- [ ] Claude API Key 발급 (console.anthropic.com)
-- [ ] Docker Compose 설계 (에이전트 + MCP + Telegram)
-- [ ] Telegram Bot 연동
-- [ ] 첫 에이전트 자동화 구현
-- [ ] Wake on LAN 설정 (LAN 케이블 연결 후, MAC: C8-FF-BF-0E-58-CE)
+## 저장소
+
+- Notion: 에이전트 output/정리
+- OneDrive: 대용량 파일
+- GitHub: 코드 (JHlim-ui/mini-pc-playground)

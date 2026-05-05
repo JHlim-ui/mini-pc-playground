@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  weather-agent:
+    build: ./agents/weather
+    container_name: weather-agent
+    env_file:
+      - .env
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+
+  # 향후 추가 예정
+  # schedule-agent:
+  #   build: ./agents/schedule
+  #   container_name: schedule-agent
+  #   env_file: .env
+  #   restart: unless-stopped
+
+  # budget-agent:
+  #   build: ./agents/budget
+  #   container_name: budget-agent
+  #   env_file: .env
+  #   restart: unless-stopped
+
+networks:
+  default:
+    name: agent-network

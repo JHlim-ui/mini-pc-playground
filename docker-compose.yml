@@ -4,24 +4,13 @@ services:
   weather-agent:
     build: ./agents/weather
     container_name: weather-agent
-    env_file:
-      - .env
+    env_file: .env
     restart: unless-stopped
+    ports:
+      - "5000:5000"   # 카카오 챗봇 Webhook
     volumes:
       - ./logs:/app/logs
-
-  # 향후 추가 예정
-  # schedule-agent:
-  #   build: ./agents/schedule
-  #   container_name: schedule-agent
-  #   env_file: .env
-  #   restart: unless-stopped
-
-  # budget-agent:
-  #   build: ./agents/budget
-  #   container_name: budget-agent
-  #   env_file: .env
-  #   restart: unless-stopped
+      - ./data:/app/data  # 카카오 토큰 저장
 
 networks:
   default:
